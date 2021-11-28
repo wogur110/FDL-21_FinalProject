@@ -14,9 +14,9 @@ def parse():
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-s', '--step', type=int, default=20, help='Step size for StepLR scheduler')
     parser.add_argument('-r', '--report-interval', type=int, default=100, help='Report interval')
-    parser.add_argument('-n', '--net-name', type=Path, default='LinearNet', help='Name of network, LinearNet or basicCNN')
+    parser.add_argument('-n', '--net-name', type=str, default='LinearNet', help='Name of network, LinearNet or LeNet5')
 
-    parser.add_argument('-d', '--data-name', type=str, default='MNIST', help='Name of dataset')
+    parser.add_argument('-d', '--data-name', type=str, default='CIFAR10', help='Name of dataset, MNIST or CIFAR10')
     parser.add_argument('-t', '--data-path-train', type=Path, default='./Data/train/', help='Directory of train data')
     parser.add_argument('-v', '--data-path-val', type=Path, default='./Data/val/', help='Directory of validation data')
 
@@ -27,12 +27,14 @@ def parse():
 
 if __name__ == '__main__':
     args = parse()
-    args.exp_dir = './result' / args.net_name / 'checkpoints'
+    exp_dir_name = args.net_name + '_' + args.data_name
+    args.exp_dir = Path('./result') / exp_dir_name / 'checkpoints'
     args.exp_dir.mkdir(parents=True, exist_ok=True)
 
-    assert args.data_name == "MNIST"
+    assert args.data_name == "MNIST" or "CIFAR10"
     if args.data_name == "MNIST" :
-        args.input_size = 1*28*28
+        args.num_classes = 10
+    elif args.data_name == "CIFAR10" :
         args.num_classes = 10
 
     if args.seed is not None:

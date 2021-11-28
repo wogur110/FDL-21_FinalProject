@@ -96,11 +96,16 @@ def train(args):
         train=False
     )
 
-    assert str(args.net_name) == "LinearNet" or "basicCNN"
-    if str(args.net_name) == "LinearNet":
+    assert args.net_name == "LinearNet" or "LeNet5"
+    if args.net_name == "LinearNet":
         model = LinearNet(
-            input_size = args.input_size, 
-            num_classes = args.num_classes
+            num_classes = args.num_classes,
+            data_name = args.data_name
+        )
+    if args.net_name == "LeNet5":
+        model = LeNet5(
+            num_classes = args.num_classes,
+            data_name = args.data_name
         )
     model.to(device=device)
 

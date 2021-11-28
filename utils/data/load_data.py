@@ -9,9 +9,11 @@ from torchvision import datasets
 from utils.data.transforms import Transform
 
 def create_data_loaders(data_name, data_path, batch_size, num_workers, args, train=True):    
-    assert data_name == "MNIST"
+    assert data_name == "MNIST" or "CIFAR-10"
     if data_name == "MNIST" :
         data_storage = datasets.MNIST(data_path, train=train, download=True, transform=Transform())
+    if data_name == "CIFAR10" :
+        data_storage = datasets.CIFAR10(data_path, train=train, download=True, transform=Transform())
 
     kwargs = {}
     if torch.cuda.is_available():

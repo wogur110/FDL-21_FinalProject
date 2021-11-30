@@ -162,7 +162,7 @@ def train(args):
                 data_name = args.data_name
             )
         else :
-            # VGGNet is for ImageNet (spatial size : 224x224)
+            # VGGNet is for TinyImageNet (spatial size : 64x64)
             model = VGGNet(
                 model = args.net_name,
                 in_channels = args.in_channels,

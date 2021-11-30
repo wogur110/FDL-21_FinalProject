@@ -5,7 +5,7 @@ from torch.nn import functional as F
 class LinearNet(nn.Module):
     def __init__(self, num_classes, data_name="MNIST"):
         super().__init__()
-        assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32"
+        assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32" or data_name == "TinyImageNet"
         if data_name == "MNIST" :
             input_size = 1*28*28
         elif data_name == "CIFAR10" or data_name == "CIFAR100":
@@ -14,6 +14,8 @@ class LinearNet(nn.Module):
             input_size = 3*224*224
         elif data_name == "ImageNet32" :
             input_size = 3*32*32
+        elif data_name == "TinyImageNet" :
+            input_size = 3*64*64
         self.linear = nn.Linear(input_size, num_classes)
 
     def forward(self, input):
@@ -48,7 +50,7 @@ class LeNet5(nn.Module):
         return out
 
 class VGGNet(nn.Module):
-    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="ImageNet"):
+    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
         super().__init__()
         self.in_channels = in_channels
 
@@ -66,13 +68,13 @@ class VGGNet(nn.Module):
         self.conv_layers = self.create_conv_laters(VGG_types[model])
 
         self.fcs = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 4096),
+            nn.Linear(512 * 2 * 2, 1024),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(4096, 4096),
+            nn.Linear(1024, 1024),
             nn.ReLU(),
             nn.Dropout(),
-            nn.Linear(4096, num_classes),
+            nn.Linear(1024, num_classes),
         )
 
         # weight initialization

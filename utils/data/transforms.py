@@ -51,3 +51,20 @@ def ImageNetTransform(train=True, resize=False):
                 ])
     
     return transform
+
+def TinyImageNetTransform(train=True):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    if train == True :
+        transform=transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+    elif train == False :
+        transform=transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
+    
+    return transform

@@ -9,7 +9,7 @@ from torchvision import datasets
 from utils.data.transforms import Transform, ImageNetTransform
 
 def create_data_loaders(data_name, data_path, batch_size, num_workers, args, train=True):    
-    assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet64"
+    assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32"
     if data_name == "MNIST" :
         data_storage = datasets.MNIST(data_path, train=train, download=True, transform=Transform())
     elif data_name == "CIFAR10" :
@@ -19,7 +19,7 @@ def create_data_loaders(data_name, data_path, batch_size, num_workers, args, tra
     elif data_name == "ImageNet" :
         data_dir = data_path / data_name
         data_storage = datasets.ImageFolder(data_dir, transform=ImageNetTransform(train, resize=False))
-    elif data_name == "ImageNet64" :
+    elif data_name == "ImageNet32" :
         data_dir = data_path / "ImageNet"
         data_storage = datasets.ImageFolder(data_dir, transform=ImageNetTransform(train, resize=True))
 

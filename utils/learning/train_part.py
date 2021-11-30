@@ -14,7 +14,8 @@ def train_epoch(args, epoch, model, data_loader, optimizer, scheduler, loss_type
     time0 = start_iter = time.perf_counter()
     len_loader = len(data_loader)
     total_loss = 0.
-    correct = 0
+    correct_1 = 0
+    correct_5 = 0
 
     for iter, data in enumerate(data_loader):
         input, target = data
@@ -27,8 +28,11 @@ def train_epoch(args, epoch, model, data_loader, optimizer, scheduler, loss_type
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        _, predicted = torch.max(output, 1)
-        correct += (predicted == target).sum().item()
+        _, predicted = torch.topk(output, 5, 1, True, True)
+        predicted = predicted.T
+        correct_mat = predicted.eq(target.view(1, -1).expand_as(predicted))
+        correct_1 += (correct_mat[:1].reshape(-1).float().sum(0)).item()
+        correct_5 += (correct_mat[:5].reshape(-1).float().sum(0)).item()
 
         if iter % args.report_interval == 0:
             print(
@@ -41,14 +45,17 @@ def train_epoch(args, epoch, model, data_loader, optimizer, scheduler, loss_type
 
     scheduler.step()
     total_loss = total_loss / len_loader
-    accuracy = correct / len(data_loader.dataset) * 100
-    return total_loss, accuracy, time.perf_counter() - time0
+    top1accuracy = correct_1 / len(data_loader.dataset) * 100
+    top5accuracy = correct_5 / len(data_loader.dataset) * 100
+    return total_loss, top1accuracy, top5accuracy, time.perf_counter() - time0
 
 def validate(args, model, data_loader, loss_type):
     model.eval()
     start = time.perf_counter()
     metric_loss = 0.0
     correct = 0
+    correct_1 = 0
+    correct_5 = 0
 
     with torch.no_grad():
         for iter, data in enumerate(data_loader):
@@ -59,12 +66,16 @@ def validate(args, model, data_loader, loss_type):
             output = model(input)
             loss = loss_type(output, target)
             metric_loss += loss.item()
-            _, predicted = torch.max(output, 1)
-            correct += (predicted == target).sum().item()
+            _, predicted = torch.topk(output, 5, 1, True, True)
+            predicted = predicted.T
+            correct_mat = predicted.eq(target.view(1, -1).expand_as(predicted))
+            correct_1 += (correct_mat[:1].reshape(-1).float().sum(0)).item()
+            correct_5 += (correct_mat[:5].reshape(-1).float().sum(0)).item()
 
     metric_loss /= len(data_loader)
-    accuracy = correct / len(data_loader.dataset) * 100
-    return metric_loss, accuracy, time.perf_counter() - start
+    top1accuracy = correct_1 / len(data_loader.dataset) * 100
+    top5accuracy = correct_5 / len(data_loader.dataset) * 100
+    return metric_loss, top1accuracy, top5accuracy, time.perf_counter() - start
 
 def save_model(args, exp_dir, epoch, model, optimizer, best_val_loss, is_new_best):
     torch.save(
@@ -99,8 +110,10 @@ def plot_result(args, loss_history, metric_history):
     # plot accuracy progress
     plt.figure(2)
     plt.title("Train-Val Accuracy")
-    plt.plot(range(1,num_epochs+1),metric_history["train"],label="train")
-    plt.plot(range(1,num_epochs+1),metric_history["val"],label="val")
+    plt.plot(range(1,num_epochs+1),metric_history["traintop1"],label="traintop1")
+    plt.plot(range(1,num_epochs+1),metric_history["valtop1"],label="valtop1")
+    plt.plot(range(1,num_epochs+1),metric_history["traintop5"],label="traintop5")
+    plt.plot(range(1,num_epochs+1),metric_history["valtop5"],label="valtop5")
     plt.ylabel("Accuracy")
     plt.xlabel("Training Epochs")
     plt.legend()
@@ -165,7 +178,7 @@ def train(args):
     optimizer = torch.optim.Adam(model.parameters(), args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step, gamma=0.1)
 
-    best_val_loss = 1.
+    best_val_loss = 10.
     start_epoch = 0
 
     # history of loss values in each epoch
@@ -176,8 +189,10 @@ def train(args):
     
     # histroy of metric values in each epoch
     metric_history={
-        "train": [],
-        "val": [],
+        "traintop1": [],
+        "valtop1": [],
+        "traintop5": [],
+        "valtop5": [],
     }
 
     report_result = ""
@@ -185,8 +200,8 @@ def train(args):
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
 
-        train_loss, train_accuracy, train_time = train_epoch(args, epoch, model, train_loader, optimizer, scheduler, loss_type)
-        val_loss, val_accuracy, val_time = validate(args, model, val_loader, loss_type)
+        train_loss, train_top1accuracy, train_top5accuracy, train_time = train_epoch(args, epoch, model, train_loader, optimizer, scheduler, loss_type)
+        val_loss, val_top1accuracy, val_top5accuracy, val_time = validate(args, model, val_loader, loss_type)
 
         is_new_best = val_loss < best_val_loss
         best_val_loss = min(best_val_loss, val_loss)
@@ -195,14 +210,16 @@ def train(args):
 
         # collect loss and metric for training dataset
         loss_history["train"].append(train_loss)
-        metric_history["train"].append(train_accuracy)
+        metric_history["traintop1"].append(train_top1accuracy)
+        metric_history["traintop5"].append(train_top5accuracy)
 
         # collect loss and metric for validation dataset
         loss_history["val"].append(val_loss)
-        metric_history["val"].append(val_accuracy)
+        metric_history["valtop1"].append(val_top1accuracy)
+        metric_history["valtop5"].append(val_top5accuracy)
 
         result = f'Epoch = [{epoch:4d}/{args.num_epochs:4d}] TrainLoss = {train_loss:.4g} ' + \
-            f'ValLoss = {val_loss:.4g} ValAccuracy = {val_accuracy:.4g}% TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s\n'
+            f'ValLoss = {val_loss:.4g} Valtop1Accuracy = {val_top1accuracy:.4g}% Valtop5Accuracy = {val_top5accuracy:.4g}% TrainTime = {train_time:.4f}s ValTime = {val_time:.4f}s\n'
         print(result)
 
         report_result += result

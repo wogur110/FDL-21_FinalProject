@@ -21,7 +21,7 @@ def ImageNetTransform(train=True, resize=False):
         if resize == True :
             transform=transforms.Compose([
                     transforms.RandomResizedCrop(224),
-                    transforms.Resize(64), # Resized
+                    transforms.Resize(32), # Resized
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     normalize,
@@ -37,7 +37,7 @@ def ImageNetTransform(train=True, resize=False):
         if resize == True :
             transform=transforms.Compose([
                     transforms.Resize(256),
-                    transforms.Resize(64), # Resized
+                    transforms.Resize(32), # Resized
                     transforms.CenterCrop(224),
                     transforms.ToTensor(),
                     normalize,

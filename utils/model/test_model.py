@@ -5,15 +5,15 @@ from torch.nn import functional as F
 class LinearNet(nn.Module):
     def __init__(self, num_classes, data_name="MNIST"):
         super().__init__()
-        assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet64"
+        assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32"
         if data_name == "MNIST" :
             input_size = 1*28*28
         elif data_name == "CIFAR10" or data_name == "CIFAR100":
             input_size = 3*32*32
         elif data_name == "ImageNet" :
             input_size = 3*224*224
-        elif data_name == "ImageNet64" :
-            input_size = 3*64*64
+        elif data_name == "ImageNet32" :
+            input_size = 3*32*32
         self.linear = nn.Linear(input_size, num_classes)
 
     def forward(self, input):

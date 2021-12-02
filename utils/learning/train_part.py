@@ -141,7 +141,7 @@ def train(args):
         train=False
     )
 
-    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name
+    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "BEE" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
             num_classes = args.num_classes,
@@ -170,9 +170,27 @@ def train(args):
                 init_weights = True,
                 data_name = args.data_name
             )
+    if "BEE" in args.net_name:
+        if "reduced" in args.net_name:
+            model = BEENet_reduced(
+                model = args.net_name,
+                in_channels = args.in_channels,
+                num_classes = args.num_classes,
+                init_weights = True,
+                data_name = args.data_name
+            )
+        # BEENet is for TinyImageNet (spatial size : 64x64)
+        else :
+            model = BEENet(
+                model = args.net_name,
+                in_channels = args.in_channels,
+                num_classes = args.num_classes,
+                init_weights = True,
+                data_name = args.data_name
+            )
     model.to(device=device)
     print(model)
-    #summary(model, input_size=(3, 224, 224), device=device.type) # for ImageNet
+    #summary(model, input_size=(3, 32, 32), device=device.type)
 
     loss_type = nn.CrossEntropyLoss().to(device=device)
     optimizer = torch.optim.Adam(model.parameters(), args.lr)

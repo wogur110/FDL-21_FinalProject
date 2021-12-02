@@ -14,14 +14,14 @@ def parse():
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('-s', '--step', type=int, default=20, help='Step size for StepLR scheduler')
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
-    parser.add_argument('-n', '--net-name', type=str, default='VGG16', help='Name of network, LinearNet or LeNet5 or VGG*')
+    parser.add_argument('-n', '--net-name', type=str, default='BEE19_reduced', help='Name of network, LinearNet or LeNet5 or VGG* or BEE*')
 
-    parser.add_argument('-d', '--data-name', type=str, default='TinyImageNet', help='Name of dataset, MNIST or CIFAR10 or CIFAR100 or ImageNet32 or ImageNet or TinyImageNet')
+    parser.add_argument('-d', '--data-name', type=str, default='CIFAR100', help='Name of dataset, MNIST or CIFAR10 or CIFAR100 or ImageNet32 or ImageNet or TinyImageNet')
     parser.add_argument('-t', '--data-path-train', type=Path, default='./Data/train/', help='Directory of train data')
     parser.add_argument('-v', '--data-path-val', type=Path, default='./Data/val/', help='Directory of validation data')
 
     parser.add_argument('--no-plot-result', default=False, action='store_true', help='Whether to not plot result')
-    parser.add_argument('--seed', type=int, default=None, help='Fix random seed')
+    parser.add_argument('--seed', type=int, default=42, help='Fix random seed')
 
     args = parser.parse_args()
     return args

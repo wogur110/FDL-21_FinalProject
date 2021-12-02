@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import random
 
 def seed_fix(n):
     torch.manual_seed(n)

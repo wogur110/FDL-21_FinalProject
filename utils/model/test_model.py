@@ -9,9 +9,9 @@ class Conv2d_BEE(nn.Module):
         super().__init__()
         self.in_chans = in_chans
         self.out_chans = out_chans
-        self.Conv_layer1 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1))
+        self.Conv_layer1 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1), bias = False)
         self.Conv_layer2 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,3), stride=1, padding=(0,1))
-        self.Conv_layer3 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1))
+        self.Conv_layer3 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1), bias = False)
 
     def forward(self, x):
         out1 = self.Conv_layer1(x) * sqrt(2) / sqrt(7)
@@ -70,9 +70,13 @@ class LeNet5(nn.Module):
         return out
 
 class VGGNet(nn.Module):
+    '''
+    VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
+    '''
     def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
         super().__init__()
         self.in_channels = in_channels
+        self.model = model
 
         # create conv_layers corresponding to VGG type
         # VGG type dict
@@ -82,20 +86,52 @@ class VGGNet(nn.Module):
             'VGG11' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
             'VGG13' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
             'VGG16' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
-            'VGG19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M']
+            'VGG19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
+            'VGG11_fc' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
+            'VGG13_fc' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
+            'VGG16_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
+            'VGG19_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
         }
 
-        self.conv_layers = self.create_conv_laters(VGG_types[model])
+        for key in VGG_types :
+            if key in model :
+                self.conv_layers = self.create_conv_laters(VGG_types[key])        
 
-        self.fcs = nn.Sequential(
-            nn.Linear(512 * 2 * 2, 1024),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(1024, num_classes),
-        )
+        if "reduced" in model :
+            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        
+            # simple version of fc layers
+            self.fcs = nn.Sequential(
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(512, num_classes),
+            )
+        
+        elif "fc" in model :
+            self.fcs = nn.Sequential(
+                nn.Linear(512 * 7 * 7, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, 2048),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(2048, num_classes),
+            )
+
+        else :
+            self.fcs = nn.Sequential(
+                nn.Linear(512 * 2 * 2, 1024),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(1024, num_classes),
+            )
 
         # weight initialization
         if init_weights:
@@ -104,6 +140,9 @@ class VGGNet(nn.Module):
 
     def forward(self, x):
         x = self.conv_layers(x)
+        if "reduced" in self.model :
+            x = self.avgpool(x)
+
         x = x.view(x.size(0), -1)
         x = self.fcs(x)
         return x
@@ -112,7 +151,7 @@ class VGGNet(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
@@ -137,91 +176,18 @@ class VGGNet(nn.Module):
                            nn.ReLU()]
                 in_channels = x
             elif x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
-        
-        return nn.Sequential(*layers)
-
-
-class VGGNet_reduced(nn.Module):
-    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="ImageNet"):
-        super().__init__()
-        self.in_channels = in_channels
-
-        # create conv_layers corresponding to VGG type
-        # VGG type dict
-        # int : output channels after conv layer
-        # 'M' : max pooling layer
-        VGG_types = {
-            'VGG11_reduced' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
-            'VGG13_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
-            'VGG16_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
-            'VGG19_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M']
-        }
-
-        self.conv_layers = self.create_conv_laters(VGG_types[model])
-        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
-        
-        # simple version of fc layers
-        self.fcs_reduced = nn.Sequential(
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(512, num_classes),
-        )
-
-        # weight initialization
-        if init_weights:
-            self._initialize_weights()
-
-
-    def forward(self, x):
-        x = self.conv_layers(x)
-        # simple version of fc layers. In ImageNet, spatial size 7x7 -> 1x1
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fcs_reduced(x)
-        return x
-
-    # defint weight initialization function
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
-
-    # define a function to create conv layer taken the key of VGG_type dict 
-    def create_conv_laters(self, architecture):
-        layers = []
-        in_channels = self.in_channels # 3
-
-        for x in architecture:
-            if type(x) == int: # int means conv layer
-                out_channels = x
-
-                layers += [nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                                     kernel_size=(3,3), stride=(1,1), padding=(1,1)),
-                           nn.BatchNorm2d(x),
-                           nn.ReLU()]
-                in_channels = x
-            elif x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
+                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2), ceil_mode=True)]
         
         return nn.Sequential(*layers)
 
 class BEENet(nn.Module):
+    '''
+    Modified version of VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
+    '''
     def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
         super().__init__()
         self.in_channels = in_channels
+        self.model = model
 
         # create conv_layers corresponding to VGG type
         # VGG type dict
@@ -231,20 +197,52 @@ class BEENet(nn.Module):
             'BEE11' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
             'BEE13' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
             'BEE16' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
-            'BEE19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M']
+            'BEE19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
+            'BEE11_fc' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
+            'BEE13_fc' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
+            'BEE16_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
+            'BEE19_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
         }
 
-        self.conv_layers = self.create_conv_laters(VGG_types[model])
+        for key in VGG_types :
+            if key in model :
+                self.conv_layers = self.create_conv_laters(VGG_types[key])      
 
-        self.fcs = nn.Sequential(
-            nn.Linear(512 * 2 * 2, 1024),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(1024, num_classes),
-        )
+        if "reduced" in model :
+            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        
+            # simple version of fc layers
+            self.fcs = nn.Sequential(
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(512, 512),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(512, num_classes),
+            )
+            
+        elif "fc" in model :
+            self.fcs = nn.Sequential(
+                nn.Linear(512 * 7 * 7, 4096),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(4096, 2048),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(2048, num_classes),
+            )
+        
+        else :
+            self.fcs = nn.Sequential(
+                nn.Linear(512 * 2 * 2, 1024),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Dropout(),
+                nn.Linear(1024, num_classes),
+            )
 
         # weight initialization
         if init_weights:
@@ -253,6 +251,9 @@ class BEENet(nn.Module):
 
     def forward(self, x):
         x = self.conv_layers(x)
+        if "reduced" in self.model :
+            x = self.avgpool(x)
+
         x = x.view(x.size(0), -1)
         x = self.fcs(x)
         return x
@@ -261,7 +262,7 @@ class BEENet(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
@@ -285,81 +286,6 @@ class BEENet(nn.Module):
                            nn.ReLU()]
                 in_channels = x
             elif x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
-        
-        return nn.Sequential(*layers)
-
-class BEENet_reduced(nn.Module):
-    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
-        super().__init__()
-        self.in_channels = in_channels
-
-        # create conv_layers corresponding to VGG type
-        # VGG type dict
-        # int : output channels after conv layer
-        # 'M' : max pooling layer
-        VGG_types = {
-            'BEE11_reduced' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
-            'BEE13_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
-            'BEE16_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
-            'BEE19_reduced' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M']
-        }
-
-        self.conv_layers = self.create_conv_laters(VGG_types[model])
-        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
-        
-        # simple version of fc layers
-        self.fcs_reduced = nn.Sequential(
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(512, num_classes),
-        )
-
-        # weight initialization
-        if init_weights:
-            self._initialize_weights()
-
-
-    def forward(self, x):
-        x = self.conv_layers(x)
-        # simple version of fc layers. In ImageNet, spatial size 7x7 -> 1x1
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fcs_reduced(x)
-        return x
-
-    # defint weight initialization function
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
-
-    # define a function to create conv layer taken the key of VGG_type dict 
-    def create_conv_laters(self, architecture):
-        layers = []
-        in_channels = self.in_channels # 3
-
-        for x in architecture:
-            if type(x) == int: # int means conv layer
-                out_channels = x
-
-                layers += [Conv2d_BEE(in_channels, out_channels),
-                           nn.BatchNorm2d(x),
-                           nn.ReLU()]
-                in_channels = x
-            elif x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2))]
+                layers += [nn.MaxPool2d(kernel_size=(2,2), stride=(2,2), ceil_mode=True)]
         
         return nn.Sequential(*layers)

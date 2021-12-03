@@ -24,7 +24,7 @@ def create_data_loaders(data_name, data_path, batch_size, num_workers, args, tra
         data_storage = datasets.ImageFolder(data_dir, transform=ImageNetTransform(train, resize=True))
     elif data_name == "TinyImageNet" :
         data_dir = data_path / data_name
-        data_storage = datasets.ImageFolder(data_dir, transform=TinyImageNetTransform(train))
+        data_storage = datasets.ImageFolder(data_dir, transform=TinyImageNetTransform(args, train))
 
     kwargs = {}
     if torch.cuda.is_available():

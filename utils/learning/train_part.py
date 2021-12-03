@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from utils.data.load_data import create_data_loaders
 from utils.model.test_model import *
 
-def train_epoch(args, epoch, model, data_loader, optimizer, scheduler, loss_type):
+def train_epoch(args, epoch, model, data_loader, optimizer, loss_type):
     model.train()
     time0 = start_iter = time.perf_counter()
     len_loader = len(data_loader)
@@ -43,7 +43,6 @@ def train_epoch(args, epoch, model, data_loader, optimizer, scheduler, loss_type
             )
         start_iter = time.perf_counter()
 
-    scheduler.step()
     total_loss = total_loss / len_loader
     top1accuracy = correct_1 / len(data_loader.dataset) * 100
     top5accuracy = correct_5 / len(data_loader.dataset) * 100
@@ -77,7 +76,33 @@ def validate(args, model, data_loader, loss_type):
     top5accuracy = correct_5 / len(data_loader.dataset) * 100
     return metric_loss, top1accuracy, top5accuracy, time.perf_counter() - start
 
+def update_lr(metric_history, scheduler):
+    """
+    Decreases learning rate (lr), terminates training after 3 lr decreases
+    Track validation accuracy, decrease lr by 0.2 when:
+        1. validation accuracy worsens
+        2. less than 0.2% absolute improvement last 3 iterations
+    """
+    val_accs = metric_history["valtop1"]
+    if len(val_accs) < 3 : 
+        return False
+    decrease = False
+    # decrease LR if validation acc worsens
+    if val_accs[-1] < max(val_accs):
+        decrease = True
+    avg_2 = (val_accs[-2] + val_accs[-3]) / 2
+    # decrease LR if validation accuracy doesn't improve by 0.2% (absolute)
+    if abs(val_accs[-1] - avg_2) < 0.2:
+        decrease = True
+    if decrease :
+        scheduler.step()
+
+    return decrease
+
 def save_model(args, exp_dir, epoch, model, optimizer, best_val_loss, is_new_best):
+    """
+    Save model parameter and hyperparameter for each epoch, and convert best_model if it is best
+    """
     torch.save(
         {
             'epoch': epoch,
@@ -93,7 +118,10 @@ def save_model(args, exp_dir, epoch, model, optimizer, best_val_loss, is_new_bes
         shutil.copyfile(exp_dir / 'model.pt', exp_dir / 'best_model.pt')
 
 def plot_result(args, loss_history, metric_history):
-    num_epochs = args.num_epochs
+    """
+    Plot loss history vs epochs and Accuracy history vs epochs
+    """
+    num_epochs = len(loss_history["train"])
     save_dir = args.exp_dir
 
     # plot loss progress
@@ -153,48 +181,30 @@ def train(args):
             data_name = args.data_name
         )
     if "VGG" in args.net_name:
-        if "reduced" in args.net_name:
-            model = VGGNet_reduced(
-                model = args.net_name,
-                in_channels = args.in_channels,
-                num_classes = args.num_classes,
-                init_weights = True,
-                data_name = args.data_name
-            )
-        else :
-            # VGGNet is for TinyImageNet (spatial size : 64x64)
-            model = VGGNet(
-                model = args.net_name,
-                in_channels = args.in_channels,
-                num_classes = args.num_classes,
-                init_weights = True,
-                data_name = args.data_name
-            )
+        # VGGNet is for TinyImageNet (spatial size : 64x64)
+        model = VGGNet(
+            model = args.net_name,
+            in_channels = args.in_channels,
+            num_classes = args.num_classes,
+            init_weights = True,
+            data_name = args.data_name
+        )            
     if "BEE" in args.net_name:
-        if "reduced" in args.net_name:
-            model = BEENet_reduced(
-                model = args.net_name,
-                in_channels = args.in_channels,
-                num_classes = args.num_classes,
-                init_weights = True,
-                data_name = args.data_name
-            )
         # BEENet is for TinyImageNet (spatial size : 64x64)
-        else :
-            model = BEENet(
-                model = args.net_name,
-                in_channels = args.in_channels,
-                num_classes = args.num_classes,
-                init_weights = True,
-                data_name = args.data_name
-            )
+        model = BEENet(
+            model = args.net_name,
+            in_channels = args.in_channels,
+            num_classes = args.num_classes,
+            init_weights = True,
+            data_name = args.data_name
+        )
     model.to(device=device)
     print(model)
-    #summary(model, input_size=(3, 32, 32), device=device.type)
+    summary(model, input_size=(3, 56, 56), device=device.type) # for TinyImageNet, the input to the network is a 56x56 RGB crop.
 
     loss_type = nn.CrossEntropyLoss().to(device=device)
-    optimizer = torch.optim.Adam(model.parameters(), args.lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step, gamma=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.2) # track validation accuracy and decrease lr by 0.2
 
     best_val_loss = 10.
     start_epoch = 0
@@ -213,12 +223,13 @@ def train(args):
         "valtop5": [],
     }
 
+    decrease_lr_count = 0
     report_result = ""
 
     for epoch in range(start_epoch, args.num_epochs):
         print(f'Epoch #{epoch:2d} ............... {args.net_name} ...............')
 
-        train_loss, train_top1accuracy, train_top5accuracy, train_time = train_epoch(args, epoch, model, train_loader, optimizer, scheduler, loss_type)
+        train_loss, train_top1accuracy, train_top5accuracy, train_time = train_epoch(args, epoch, model, train_loader, optimizer, loss_type)
         val_loss, val_top1accuracy, val_top5accuracy, val_time = validate(args, model, val_loader, loss_type)
 
         is_new_best = val_loss < best_val_loss
@@ -241,6 +252,16 @@ def train(args):
         print(result)
 
         report_result += result
+
+        if update_lr(metric_history, scheduler) :
+            decrease_lr_count += 1
+            result = '*** New learning rate: {}\n'.format(scheduler.get_last_lr())
+            print(result)
+            report_result += result
+        
+        # Decreases learning rate (lr), terminates training after 3 lr decreases
+        if decrease_lr_count > 3 :
+            break
 
     if not args.no_plot_result:
         plot_result(args, loss_history, metric_history)

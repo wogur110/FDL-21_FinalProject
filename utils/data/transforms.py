@@ -52,17 +52,31 @@ def ImageNetTransform(train=True, resize=False):
     
     return transform
 
-def TinyImageNetTransform(train=True):
+def TinyImageNetTransform(args, train=True):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
+
+    if args.resize_crop :
+        transform_resizecrop = transforms.RandomResizedCrop(56)
+    else :
+        transform_resizecrop = nn.Identity()
+
+    if args.saturation :
+        transform_saturation = transforms.ColorJitter(saturation=(0.5, 2.0))
+    else :
+        transform_saturation = nn.Identity()
+
     if train == True :
         transform=transforms.Compose([
+                transform_resizecrop,
                 transforms.RandomHorizontalFlip(),
+                transform_saturation,
                 transforms.ToTensor(),
                 normalize,
             ])
     elif train == False :
         transform=transforms.Compose([
+                transform_resizecrop,
                 transforms.ToTensor(),
                 normalize,
             ])

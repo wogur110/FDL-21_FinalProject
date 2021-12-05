@@ -12,7 +12,6 @@ def parse():
     parser.add_argument('-w', '--workers', type=int, default=4, help='# of workers for data loader')
     parser.add_argument('-e', '--num-epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--weight-decay', type=float, default=5e-4, help='Weight decay for optimizer')
     #parser.add_argument('-s', '--step', type=int, default=20, help='Step size for StepLR scheduler') # No use for this project
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
     parser.add_argument('-n', '--net-name', type=str, default='VGG16', help='Name of network, LinearNet or LeNet5 or VGG* or BEE*')
@@ -32,7 +31,7 @@ def parse():
 if __name__ == '__main__':
     args = parse()
     exp_dir_name = args.net_name + '_' + args.data_name
-    args.exp_dir = Path('./result/data_aug') / exp_dir_name
+    args.exp_dir = Path('./result/AdamW') / exp_dir_name
     checkpoints_dir = args.exp_dir / 'checkpoints'
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
 

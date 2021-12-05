@@ -84,7 +84,7 @@ def update_lr(metric_history, scheduler):
         2. less than 0.2% absolute improvement last 3 iterations
     """
     val_accs = metric_history["valtop1"]
-    if len(val_accs) < 3 : 
+    if len(val_accs) < 20 : 
         return False
     decrease = False
     # decrease LR if validation acc worsens
@@ -203,7 +203,8 @@ def train(args):
     summary(model, input_size=(3, 56, 56), device=device.type) # for TinyImageNet, the input to the network is a 56x56 RGB crop.
 
     loss_type = nn.CrossEntropyLoss().to(device=device)
-    optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    #optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=5e-5)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.2) # track validation accuracy and decrease lr by 0.2
 
     best_val_loss = 10.

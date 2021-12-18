@@ -66,11 +66,17 @@ def TinyImageNetTransform(args, train=True):
     else :
         transform_saturation = nn.Identity()
 
+    if args.hue : 
+        transform_hue = transforms.ColorJitter(hue=0.02)
+    else :
+        transform_hue = nn.Identity()
+
     if train == True :
         transform=transforms.Compose([
                 transform_resizecrop,
                 transforms.RandomHorizontalFlip(),
                 transform_saturation,
+                transform_hue,
                 transforms.ToTensor(),
                 normalize,
             ])

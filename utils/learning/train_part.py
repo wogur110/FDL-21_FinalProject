@@ -200,7 +200,7 @@ def train(args):
         )
     model.to(device=device)
     print(model)
-    summary(model, input_size=(3, 56, 56), device=device.type) # for TinyImageNet, the input to the network is a 56x56 RGB crop.
+    summary(model, input_size=(3, 64, 64), device=device.type) # for TinyImageNet, the input to the network is a 56x56 RGB crop.
 
     loss_type = nn.CrossEntropyLoss().to(device=device)
     #optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)

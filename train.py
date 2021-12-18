@@ -21,6 +21,7 @@ def parse():
     parser.add_argument('-v', '--data-path-val', type=Path, default='./Data/val/', help='Directory of validation data')
     parser.add_argument('-c', '--resize-crop', default=False, action='store_true', help='Whether to use random resizecrop')
     parser.add_argument('-s', '--saturation', default=False, action='store_true', help='Whether to use random saturation')
+    parser.add_argument('--hue', default=False, action='store_true', help='Whether to use random hue')
 
     parser.add_argument('--no-plot-result', default=False, action='store_true', help='Whether to not plot result')
     parser.add_argument('--seed', type=int, default=42, help='Fix random seed')
@@ -31,7 +32,7 @@ def parse():
 if __name__ == '__main__':
     args = parse()
     exp_dir_name = args.net_name + '_' + args.data_name
-    args.exp_dir = Path('./result/AdamW') / exp_dir_name
+    args.exp_dir = Path('./result/modelAug') / exp_dir_name
     checkpoints_dir = args.exp_dir / 'checkpoints'
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
 

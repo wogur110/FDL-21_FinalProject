@@ -30,7 +30,7 @@ def create_data_loaders(data_name, data_path, batch_size, num_workers, args, tra
     if torch.cuda.is_available():
         kwargs.update({'num_workers': num_workers,
                    'pin_memory': True,
-                   'shuffle': True},
+                   'shuffle': train},
                  )
 
     data_loader = DataLoader(

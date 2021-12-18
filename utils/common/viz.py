@@ -10,6 +10,7 @@ import torchvision
 
 from utils.data.load_data import create_data_loaders
 from utils.model.test_model import *
+from pathlib import Path
 
 def imshow(args, img):
     """Custom function to display the image using matplotlib"""
@@ -31,9 +32,12 @@ def imshow(args, img):
     save_path = args.exp_dir / 'image_viz.png'
     plt.savefig(save_path, dpi=100) 
 
-def show_feature(args, dataloader, model):
+def show_feature(args, dataloader, index, model):
     """custom function to fetch images from dataloader"""
-    images,_ = next(iter(dataloader))
+    for idx, (images, _) in enumerate(dataloader) :
+        if idx == index :
+            break
+
     images = images.cuda(non_blocking=True)
 
     activation = {}
@@ -42,12 +46,10 @@ def show_feature(args, dataloader, model):
             activation[name] = output.detach()
         return hook
 
-    if "VGG" in args.net_name :
-        model.conv_layers[3].register_forward_hook(get_activation('conv1'))
-        model.conv_layers[10].register_forward_hook(get_activation('conv2'))
-    elif "Hexa" in args.net_name :
-        model.conv_layers[3].register_forward_hook(get_activation('conv1'))
-        model.conv_layers[10].register_forward_hook(get_activation('conv2'))
+    model.conv_layers[3].register_forward_hook(get_activation('conv1'))
+    model.conv_layers[10].register_forward_hook(get_activation('conv2'))
+    model.conv_layers[20].register_forward_hook(get_activation('conv3'))
+    model.conv_layers[30].register_forward_hook(get_activation('conv4'))
     
     outputs = model(images) #run the model on the images    
     
@@ -59,6 +61,8 @@ def show_feature(args, dataloader, model):
 
     act1 = activation['conv1'].squeeze().cpu()
     act2 = activation['conv2'].squeeze().cpu()
+    act3 = activation['conv3'].squeeze().cpu()
+    act4 = activation['conv4'].squeeze().cpu()
 
     #plot the feature of layer 1
     plt.figure(figsize = (50, 20))
@@ -82,6 +86,30 @@ def show_feature(args, dataloader, model):
         plt.axis("off")
 
     save_path = args.exp_dir / 'feature_2_viz.png'
+    plt.savefig(save_path, dpi=100)
+
+    #plot the feature of layer 3
+    plt.figure(figsize = (50, 20))
+    for i, filter in enumerate(act3) :
+        if (i == 32) :
+            break
+        plt.subplot(4, 8, i + 1)
+        plt.imshow(filter, cmap = 'gray')
+        plt.axis("off")
+
+    save_path = args.exp_dir / 'feature_3_viz.png'
+    plt.savefig(save_path, dpi=100) 
+
+    #plot the feature of layer 4
+    plt.figure(figsize = (50, 20))
+    for i, filter in enumerate(act4) :
+        if (i == 32) :
+            break
+        plt.subplot(4, 8, i + 1)
+        plt.imshow(filter, cmap = 'gray')
+        plt.axis("off")
+
+    save_path = args.exp_dir / 'feature_4_viz.png'
     plt.savefig(save_path, dpi=100) 
     
     return images, pred
@@ -224,9 +252,6 @@ def kernel_viz(args):
         train=False
     )
 
-    images,_ = next(iter(val_loader))
-    images = images.cuda(non_blocking=True)
-
     assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "Hexa" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
@@ -268,4 +293,65 @@ def kernel_viz(args):
 
     plot_weights(args, model, 0)
 
-    images, pred = show_feature(args, val_loader, model)
+    images, pred = show_feature(args, val_loader, args.image_index, model)
+
+def test_validate(args) :
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Current cuda device: ', torch.cuda.current_device())
+
+    val_loader = create_data_loaders(
+        data_name=args.data_name,
+        data_path=args.data_path_val, 
+        batch_size=args.batch_size,
+        num_workers=0,
+        args=args,
+        train=False
+    )
+
+    model_VGG = VGGNet(
+        model = 'VGG16_fc',
+        in_channels = args.in_channels,
+        num_classes = args.num_classes,
+        init_weights = True,
+        data_name = args.data_name
+    )
+    model_VGG.to(device=device)
+
+    model_Hexa = HexaNet(
+        model = 'Hexa16_fc_hue',
+        in_channels = args.in_channels,
+        num_classes = args.num_classes,
+        init_weights = True,
+        data_name = args.data_name
+    )
+    model_Hexa.to(device=device)
+
+    images,_ = next(iter(val_loader))
+    images = images.cuda(non_blocking=True)
+
+    exp_dir1 = Path('./result/AdamW') / Path('VGG16_fc_TinyImageNet')
+    exp_dir2 = Path('./result/AdamW') / Path('Hexa16_fc_hue_TinyImageNet')
+
+    checkpoints_dir1 = exp_dir1 / 'checkpoints'
+    checkpoints_dir2 = exp_dir2 / 'checkpoints'
+    checkpoint1 = torch.load(checkpoints_dir1 / 'best_model.pt', map_location = 'cpu')
+    checkpoint2 = torch.load(checkpoints_dir2 / 'best_model.pt', map_location = 'cpu')
+
+    model_VGG.load_state_dict(checkpoint1['model'])
+    model_VGG.eval()
+    summary(model_VGG, input_size=(3, 64, 64), device=device.type)
+    model_Hexa.load_state_dict(checkpoint2['model'])
+    model_Hexa.eval()
+    summary(model_Hexa, input_size=(3, 64, 64), device=device.type)
+
+    for idx, (images, targets) in enumerate(val_loader) :
+        images = images.cuda(non_blocking=True)
+        output_VGG = model_VGG(images)
+        _, pred_VGG = torch.max(output_VGG.data, 1)
+        output_Hexa = model_Hexa(images)
+        _, pred_Hexa = torch.max(output_Hexa.data, 1)
+
+        if targets == pred_Hexa.cpu() and targets != pred_VGG.cpu() :
+            print(idx, targets, pred_Hexa.cpu(), pred_VGG.cpu())
+
+        

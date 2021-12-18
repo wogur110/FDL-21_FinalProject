@@ -1,7 +1,7 @@
 import argparse
 import torch
 from utils.common.utils import seed_fix
-from utils.common.viz import kernel_viz
+from utils.common.viz import kernel_viz, test_validate
 from pathlib import Path
 
 def parse():
@@ -23,6 +23,7 @@ def parse():
     parser.add_argument('-c', '--resize-crop', default=False, action='store_true', help='Whether to use random resizecrop')
     parser.add_argument('-s', '--saturation', default=False, action='store_true', help='Whether to use random saturation')
     parser.add_argument('--hue', default=False, action='store_true', help='Whether to use random hue')
+    parser.add_argument('--image-index', type=int, default=0, help='Index of Validation dataset for visualization')
 
     parser.add_argument('--no-plot-result', default=False, action='store_true', help='Whether to not plot result')
     parser.add_argument('--seed', type=int, default=42, help='Fix random seed')
@@ -53,4 +54,5 @@ if __name__ == '__main__':
     if args.seed is not None:
         seed_fix(args.seed)
 
+    #test_validate(args)
     kernel_viz(args)

@@ -196,7 +196,8 @@ def train(args):
             in_channels = args.in_channels,
             num_classes = args.num_classes,
             init_weights = True,
-            data_name = args.data_name
+            data_name = args.data_name,
+            interpolation = args.interpolation
         )
     model.to(device=device)
     print(model)

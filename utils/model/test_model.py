@@ -5,10 +5,11 @@ from math import sqrt
 
 class Conv2d_BEE(nn.Module):
 
-    def __init__(self, in_chans, out_chans):
+    def __init__(self, in_chans, out_chans, interpolation):
         super().__init__()
         self.in_chans = in_chans
         self.out_chans = out_chans
+        self.alpha = interpolation
         self.Conv_layer1 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1), bias = False)
         self.Conv_layer2 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,3), stride=1, padding=(0,1))
         self.Conv_layer3 = nn.Conv2d(in_chans, out_chans, kernel_size=(1,2), stride=1, padding=(1,1), bias = False)
@@ -18,7 +19,7 @@ class Conv2d_BEE(nn.Module):
         out2 = self.Conv_layer2(x) * sqrt(3) / sqrt(7)
         out3 = self.Conv_layer3(x) * sqrt(2) / sqrt(7)
 
-        out = out2 + (out1[:,:,:-2,:-1] + out1[:,:,:-2,1:])/2 + (out3[:,:,2:,:-1] + out3[:,:,2:,1:])/2
+        out = out2 + (out1[:,:,:-2,:-1] * (1 - self.alpha) + out1[:,:,:-2,1:] * self.alpha)/2 + (out3[:,:,2:,:-1] * (1 - self.alpha) + out3[:,:,2:,1:] * self.alpha)/2
 
         return out
 
@@ -199,10 +200,11 @@ class BEENet(nn.Module):
     '''
     Modified version of VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
     '''
-    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
+    def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet", interpolation=0.5):
         super().__init__()
         self.in_channels = in_channels
         self.model = model
+        self.interpolation = interpolation
 
         # create conv_layers corresponding to VGG type
         # VGG type dict
@@ -311,7 +313,7 @@ class BEENet(nn.Module):
             if type(x) == int: # int means conv layer
                 out_channels = x
 
-                layers += [Conv2d_BEE(in_channels, out_channels),
+                layers += [Conv2d_BEE(in_channels, out_channels, self.interpolation),
                            nn.BatchNorm2d(x),
                            nn.ReLU()]
                 in_channels = x

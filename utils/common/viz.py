@@ -45,7 +45,7 @@ def show_feature(args, dataloader, model):
     if "VGG" in args.net_name :
         model.conv_layers[3].register_forward_hook(get_activation('conv1'))
         model.conv_layers[10].register_forward_hook(get_activation('conv2'))
-    elif "BEE" in args.net_name :
+    elif "Hexa" in args.net_name :
         model.conv_layers[3].register_forward_hook(get_activation('conv1'))
         model.conv_layers[10].register_forward_hook(get_activation('conv2'))
     
@@ -125,7 +125,7 @@ def plot_weights(args, model, layer_num):
         else:
             print("Can only visualize layers which are convolutional")
 
-    if "BEE" in args.net_name :
+    if "Hexa" in args.net_name :
         #extracting the model features at the particular layer number
 
         #checking whether the layer is convolution layer or not 
@@ -142,7 +142,7 @@ def plot_weights(args, model, layer_num):
         weight_ts3 = layer3.weight.data.cpu()
 
         weight_tensor = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 3, 3)) # visualize real kernel
-        weight_tensor_params = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 7)) # visualize with 7 parameters in BEENet kernel
+        weight_tensor_params = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 7)) # visualize with 7 parameters in HexaNet kernel
         weight_tensor[:, :, :1, :2] += weight_ts1 / 2
         weight_tensor[:, :, :1, 1:] += weight_ts1 / 2
         weight_tensor[:, :, 1:2, :] += weight_ts2
@@ -227,7 +227,7 @@ def kernel_viz(args):
     images,_ = next(iter(val_loader))
     images = images.cuda(non_blocking=True)
 
-    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "BEE" in args.net_name
+    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "Hexa" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
             num_classes = args.num_classes,
@@ -247,9 +247,9 @@ def kernel_viz(args):
             init_weights = True,
             data_name = args.data_name
         )            
-    if "BEE" in args.net_name:
-        # BEENet is for TinyImageNet (spatial size : 64x64)
-        model = BEENet(
+    if "Hexa" in args.net_name:
+        # HexaNet is for TinyImageNet (spatial size : 64x64)
+        model = HexaNet(
             model = args.net_name,
             in_channels = args.in_channels,
             num_classes = args.num_classes,

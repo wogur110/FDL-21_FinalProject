@@ -169,7 +169,7 @@ def train(args):
         train=False
     )
 
-    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "BEE" in args.net_name
+    assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "Hexa" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
             num_classes = args.num_classes,
@@ -189,9 +189,9 @@ def train(args):
             init_weights = True,
             data_name = args.data_name
         )            
-    if "BEE" in args.net_name:
-        # BEENet is for TinyImageNet (spatial size : 64x64)
-        model = BEENet(
+    if "Hexa" in args.net_name:
+        # HexaNet is for TinyImageNet (spatial size : 64x64)
+        model = HexaNet(
             model = args.net_name,
             in_channels = args.in_channels,
             num_classes = args.num_classes,

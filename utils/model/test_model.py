@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 from math import sqrt
 
-class Conv2d_BEE(nn.Module):
+class Conv2d_Hexa(nn.Module):
 
     def __init__(self, in_chans, out_chans, interpolation):
         super().__init__()
@@ -196,7 +196,7 @@ class VGGNet(nn.Module):
         
         return nn.Sequential(*layers)
 
-class BEENet(nn.Module):
+class HexaNet(nn.Module):
     '''
     Modified version of VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
     '''
@@ -211,18 +211,18 @@ class BEENet(nn.Module):
         # int : output channels after conv layer
         # 'M' : max pooling layer
         VGG_types = {
-            'BEE11' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
-            'BEE13' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
-            'BEE16' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
-            'BEE19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
-            'BEE11_fc' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M'],
-            'BEE13_fc' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M'],
-            'BEE16_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M'],
-            'BEE19_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M'],
-            'BEE11_large' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512],
-            'BEE13_large' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512],
-            'BEE16_large' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512],
-            'BEE19_large' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512],
+            'Hexa11' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M',512,512,'M'],
+            'Hexa13' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M', 512,512,'M'],
+            'Hexa16' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M',512,512,512,'M'],
+            'Hexa19' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M',512,512,512,512,'M'],
+            'Hexa11_fc' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512, 'M'],
+            'Hexa13_fc' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512, 'M'],
+            'Hexa16_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512, 'M'],
+            'Hexa19_fc' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512, 'M'],
+            'Hexa11_large' : [64, 'M', 128, 'M', 256, 256, 'M', 512,512],
+            'Hexa13_large' : [64,64, 'M', 128, 128, 'M', 256, 256, 'M', 512,512],
+            'Hexa16_large' : [64,64, 'M', 128, 128, 'M', 256, 256,256, 'M', 512,512,512],
+            'Hexa19_large' : [64,64, 'M', 128, 128, 'M', 256, 256,256,256, 'M', 512,512,512,512],
         }
 
         for key in VGG_types :
@@ -313,7 +313,7 @@ class BEENet(nn.Module):
             if type(x) == int: # int means conv layer
                 out_channels = x
 
-                layers += [Conv2d_BEE(in_channels, out_channels, self.interpolation),
+                layers += [Conv2d_Hexa(in_channels, out_channels, self.interpolation),
                            nn.BatchNorm2d(x),
                            nn.ReLU()]
                 in_channels = x

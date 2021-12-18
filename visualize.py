@@ -14,8 +14,8 @@ def parse():
     parser.add_argument('-l', '--lr', type=float, default=1e-3, help='Learning rate')
     #parser.add_argument('-s', '--step', type=int, default=20, help='Step size for StepLR scheduler') # No use for this project
     parser.add_argument('-r', '--report-interval', type=int, default=50, help='Report interval')
-    parser.add_argument('-n', '--net-name', type=str, default='VGG16', help='Name of network, LinearNet or LeNet5 or VGG* or BEE*')
-    parser.add_argument('-i', '--interpolation', type=float, default=0.5, help='Interpolation rate in 3x3 kernel of BEENet; value from 0 to 1')
+    parser.add_argument('-n', '--net-name', type=str, default='VGG16', help='Name of network, LinearNet or LeNet5 or VGG* or Hexa*')
+    parser.add_argument('-i', '--interpolation', type=float, default=0.5, help='Interpolation rate in 3x3 kernel of HexaNet; value from 0 to 1')
 
     parser.add_argument('-d', '--data-name', type=str, default='TinyImageNet', help='Name of dataset, MNIST or CIFAR10 or CIFAR100 or ImageNet32 or ImageNet or TinyImageNet')
     parser.add_argument('-t', '--data-path-train', type=Path, default='./Data/train/', help='Directory of train data')

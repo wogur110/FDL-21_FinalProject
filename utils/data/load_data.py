@@ -8,7 +8,10 @@ from torchvision import datasets
 
 from utils.data.transforms import Transform, ImageNetTransform, TinyImageNetTransform
 
-def create_data_loaders(data_name, data_path, batch_size, num_workers, args, train=True):    
+def create_data_loaders(data_name, data_path, batch_size, num_workers, args, train=True):
+    """
+    Create data loaders based on data_name, by default we used TinyImageNet
+    """
     assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32" or data_name == "TinyImageNet"
     if data_name == "MNIST" :
         data_storage = datasets.MNIST(data_path, train=train, download=True, transform=Transform())

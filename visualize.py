@@ -34,8 +34,9 @@ def parse():
 if __name__ == '__main__':
     args = parse()
     exp_dir_name = args.net_name + '_' + args.data_name
-    args.exp_dir = Path('./result/AdamW') / exp_dir_name
+    args.exp_dir = Path('./result/AdamW') / exp_dir_name # directory for saving experiment
 
+    # Assign num_classes
     assert args.data_name == "MNIST" or args.data_name == "CIFAR10" or args.data_name == "CIFAR100" or args.data_name == "ImageNet" or args.data_name == "ImageNet32" or args.data_name == "TinyImageNet"
     if args.data_name == "MNIST" or args.data_name == "CIFAR10" :
         args.num_classes = 10
@@ -46,13 +47,16 @@ if __name__ == '__main__':
     elif args.data_name == "TinyImageNet":
         args.num_classes = 200
 
+    # Assign in_channels
     if args.data_name == "MNIST" :
         args.in_channels = 1
     else :
         args.in_channels = 3
 
+    # Seed fix
     if args.seed is not None:
         seed_fix(args.seed)
 
-    #test_validate(args)
-    kernel_viz(args)
+    # test_validate(args) # print validate input image list which has correct prediction with Hexa16_fc_hue but wrong prediction with VGG16_fc
+
+    kernel_viz(args) # visualize weight of kernel and feature map 

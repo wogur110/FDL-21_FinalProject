@@ -10,6 +10,9 @@ from utils.data.load_data import create_data_loaders
 from utils.model.test_model import *
 
 def train_epoch(args, epoch, model, data_loader, optimizer, loss_type):
+    """
+    Train model for one epoch with train dataset, calculate train_loss, top1accuracy, top5accuracy, and train time
+    """
     model.train()
     time0 = start_iter = time.perf_counter()
     len_loader = len(data_loader)
@@ -49,10 +52,12 @@ def train_epoch(args, epoch, model, data_loader, optimizer, loss_type):
     return total_loss, top1accuracy, top5accuracy, time.perf_counter() - time0
 
 def validate(args, model, data_loader, loss_type):
+    """
+    Validate model with validation dataset, calculate val_loss, top1accuracy, top5accuracy, and validation time
+    """
     model.eval()
     start = time.perf_counter()
     metric_loss = 0.0
-    correct = 0
     correct_1 = 0
     correct_5 = 0
 
@@ -87,15 +92,18 @@ def update_lr(metric_history, scheduler):
     if len(val_accs) < 20 : 
         return False
     decrease = False
-    # decrease LR if validation acc worsens
+
+    # decrease lr if validation acc worsens
     if val_accs[-1] < max(val_accs):
         decrease = True
-    avg_2 = (val_accs[-2] + val_accs[-3]) / 2
-    # decrease LR if validation accuracy doesn't improve by 0.2% (absolute)
+
+    # decrease lr if validation accuracy doesn't improve by 0.2% (absolute)
+    avg_2 = (val_accs[-2] + val_accs[-3]) / 2    
     if abs(val_accs[-1] - avg_2) < 0.2:
         decrease = True
+
     if decrease :
-        scheduler.step()
+        scheduler.step() # decrease lr by 0.2
 
     return decrease
 
@@ -124,7 +132,7 @@ def plot_result(args, loss_history, metric_history):
     num_epochs = len(loss_history["train"])
     save_dir = args.exp_dir
 
-    # plot loss progress
+    # plot loss history vs epochs
     plt.figure(1)
     plt.title("Train-Val Loss")
     plt.plot(range(1,num_epochs+1),loss_history["train"],label="train")
@@ -135,7 +143,7 @@ def plot_result(args, loss_history, metric_history):
     #plt.show()
     plt.savefig(save_dir / 'loss.png')
 
-    # plot accuracy progress
+    # plot accuracy history vs epochs
     plt.figure(2)
     plt.title("Train-Val Accuracy")
     plt.plot(range(1,num_epochs+1),metric_history["traintop1"],label="traintop1")
@@ -152,6 +160,7 @@ def train(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Current cuda device: ', torch.cuda.current_device())
 
+    # Make train_loader and val_loader
     train_loader = create_data_loaders(
         data_name=args.data_name,
         data_path=args.data_path_train, 
@@ -169,6 +178,7 @@ def train(args):
         train=False
     )
 
+    # Assign model wrt net_name
     assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "Hexa" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
@@ -201,11 +211,10 @@ def train(args):
         )
     model.to(device=device)
     print(model)
-    summary(model, input_size=(3, 64, 64), device=device.type) # for TinyImageNet, the input to the network is a 56x56 RGB crop.
+    summary(model, input_size=(3, 64, 64), device=device.type) # for TinyImageNet, the input to the network is a 64x64 RGB image.
 
     loss_type = nn.CrossEntropyLoss().to(device=device)
-    #optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
-    optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=5e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), args.lr, weight_decay=5e-5) # Adam optimizer with weight decay
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.2) # track validation accuracy and decrease lr by 0.2
 
     best_val_loss = 10.
@@ -268,6 +277,7 @@ def train(args):
     if not args.no_plot_result:
         plot_result(args, loss_history, metric_history)
     
+    # Write result in txt file
     save_result_path = args.exp_dir / "result.txt"
     f = open(save_result_path, 'w')
     f.write(report_result)

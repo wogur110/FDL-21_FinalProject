@@ -4,6 +4,9 @@ from torch.nn import functional as F
 from math import sqrt
 
 class Conv2d_Hexa(nn.Module):
+    """
+    Convolution layer of HexaNet. It will be replaced Conv2d layer of VGGNet
+    """
 
     def __init__(self, in_chans, out_chans, interpolation):
         super().__init__()
@@ -24,6 +27,9 @@ class Conv2d_Hexa(nn.Module):
         return out
 
 class LinearNet(nn.Module):
+    """
+    Default LinearNet which has only one fc layer
+    """
     def __init__(self, num_classes, data_name="MNIST"):
         super().__init__()
         assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100" or data_name == "ImageNet" or data_name == "ImageNet32" or data_name == "TinyImageNet"
@@ -46,6 +52,9 @@ class LinearNet(nn.Module):
         return out
 
 class LeNet5(nn.Module):
+    """
+    Basic LeNet5 which layer structure is conv-pool-conv-pool-fc1-fc2-fc3
+    """
     def __init__(self, num_classes, data_name="CIFAR10"):
         super().__init__()
         assert data_name == "MNIST" or data_name == "CIFAR10" or data_name == "CIFAR100"
@@ -72,7 +81,7 @@ class LeNet5(nn.Module):
 
 class VGGNet(nn.Module):
     '''
-    VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
+    VGG-like conv-net for TinyImageNet, the input to the network is a 64x64 RGB image.
     '''
     def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet"):
         super().__init__()
@@ -102,10 +111,10 @@ class VGGNet(nn.Module):
             if key in model :
                 self.conv_layers = self.create_conv_laters(VGG_types[key])        
 
+        # "reduced" : use avarage pool and reduced version of fc layers
         if "reduced" in model :
-            self.avgpool = nn.AdaptiveAvgPool2d((1,1))
-        
-            # simple version of fc layers
+            self.avgpool = nn.AdaptiveAvgPool2d((1,1))        
+            
             self.fcs = nn.Sequential(
                 nn.Linear(512, 512),
                 nn.ReLU(),
@@ -116,6 +125,7 @@ class VGGNet(nn.Module):
                 nn.Linear(512, num_classes),
             )
 
+        # "large" : removed 'M', 512, 512, 512, 'M' in convolution layer and make fc layers large
         elif "large" in model :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 8 * 8, 4096),
@@ -127,6 +137,7 @@ class VGGNet(nn.Module):
                 nn.Linear(2048, num_classes),
             )
         
+        # "fc" : removed 512, 512, 512, 'M' in convolution layer and make fc layers large
         elif "fc" in model :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 4 * 4, 4096),
@@ -138,6 +149,7 @@ class VGGNet(nn.Module):
                 nn.Linear(2048, num_classes),
             )
 
+        # original version of VGGNet
         else :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 2 * 2, 1024),
@@ -153,7 +165,6 @@ class VGGNet(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-
     def forward(self, x):
         x = self.conv_layers(x)
         if "reduced" in self.model :
@@ -163,7 +174,7 @@ class VGGNet(nn.Module):
         x = self.fcs(x)
         return x
 
-    # defint weight initialization function
+    # define weight initialization function
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -198,7 +209,7 @@ class VGGNet(nn.Module):
 
 class HexaNet(nn.Module):
     '''
-    Modified version of VGG-like conv-net for TInyImageNet, the input to the network is a 56x56 RGB crop.
+    Modified version of VGG-like conv-net for TinyImageNet, the input to the network is a 64x64 RGB image.
     '''
     def __init__(self, model, in_channels=3, num_classes=1000, init_weights=True, data_name="TinyImageNet", interpolation=0.5):
         super().__init__()
@@ -229,10 +240,10 @@ class HexaNet(nn.Module):
             if key in model :
                 self.conv_layers = self.create_conv_laters(VGG_types[key])      
 
+        # "reduced" : use avarage pool and reduced version of fc layers
         if "reduced" in model :
             self.avgpool = nn.AdaptiveAvgPool2d((1,1))
         
-            # simple version of fc layers
             self.fcs = nn.Sequential(
                 nn.Linear(512, 512),
                 nn.ReLU(),
@@ -243,6 +254,7 @@ class HexaNet(nn.Module):
                 nn.Linear(512, num_classes),
             )
         
+        # "large" : removed 'M', 512, 512, 512, 'M' in convolution layer and make fc layers large
         elif "large" in model :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 8 * 8, 4096),
@@ -253,7 +265,8 @@ class HexaNet(nn.Module):
                 nn.Dropout(),
                 nn.Linear(2048, num_classes),
             )
-            
+
+        # "fc" : removed 512, 512, 512, 'M' in convolution layer and make fc layers large    
         elif "fc" in model :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 4 * 4, 4096),
@@ -265,6 +278,7 @@ class HexaNet(nn.Module):
                 nn.Linear(2048, num_classes),
             )
         
+        # original version of VGGNet
         else :
             self.fcs = nn.Sequential(
                 nn.Linear(512 * 2 * 2, 1024),
@@ -280,7 +294,6 @@ class HexaNet(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-
     def forward(self, x):
         x = self.conv_layers(x)
         if "reduced" in self.model :
@@ -290,7 +303,7 @@ class HexaNet(nn.Module):
         x = self.fcs(x)
         return x
 
-    # defint weight initialization function
+    # define weight initialization function
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

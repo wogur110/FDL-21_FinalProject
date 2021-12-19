@@ -1,9 +1,7 @@
-import shutil
 import numpy as np
 import torch
 import torch.nn as nn
 from torchsummary import summary
-import time
 import matplotlib.pyplot as plt
 from math import ceil
 import torchvision
@@ -14,15 +12,12 @@ from pathlib import Path
 
 def imshow(args, img):
     """Custom function to display the image using matplotlib"""
-  
-    #define std correction to be made
-    std_correction = np.asarray([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-    
-    #define mean correction to be made
-    mean_correction = np.asarray([0.485, 0.456, 0.406]).reshape(3, 1, 1)
-    
-    #convert the tensor img to numpy img and de normalize 
-    npimg = np.multiply(img.numpy(), std_correction) + mean_correction
+      
+    std_correction = np.asarray([0.229, 0.224, 0.225]).reshape(3, 1, 1) #define std correction to be made
+        
+    mean_correction = np.asarray([0.485, 0.456, 0.406]).reshape(3, 1, 1) #define mean correction to be made
+        
+    npimg = np.multiply(img.numpy(), std_correction) + mean_correction #convert the tensor img to numpy img and de normalize 
     
     #plot the numpy image
     plt.figure(figsize = (4, 4))
@@ -33,7 +28,13 @@ def imshow(args, img):
     plt.savefig(save_path, dpi=100) 
 
 def show_feature(args, dataloader, index, model):
-    """custom function to fetch images from dataloader"""
+    """
+    custom function to show feature maps of input image from dataloader
+    dataloader : dataloader of validation dataset
+    index : index of image from validation dataset (seed fix)
+    """
+
+    # Find image which has correct index of validation dataset
     for idx, (images, _) in enumerate(dataloader) :
         if idx == index :
             break
@@ -115,6 +116,10 @@ def show_feature(args, dataloader, index, model):
     return images, pred
 
 def plot_weights(args, model, layer_num):
+    """
+    custom function to plot weight of convolution layer
+    """
+
     if "VGG" in args.net_name :
         #extracting the model features at the particular layer number
         layer = model.conv_layers[layer_num]
@@ -130,7 +135,7 @@ def plot_weights(args, model, layer_num):
                         
             fig = plt.figure(figsize=(num_cols, num_rows)) #set the figure size
             
-            #looping through all the kernels
+            # looping through all the kernels
             for i in range(num_kernels):
                 ax1 = fig.add_subplot(num_rows,num_cols,i+1)
                 
@@ -155,7 +160,6 @@ def plot_weights(args, model, layer_num):
 
     if "Hexa" in args.net_name :
         #extracting the model features at the particular layer number
-
         #checking whether the layer is convolution layer or not 
         try : 
             layer1 = model.conv_layers[layer_num].Conv_layer1
@@ -169,8 +173,8 @@ def plot_weights(args, model, layer_num):
         weight_ts2 = layer2.weight.data.cpu()
         weight_ts3 = layer3.weight.data.cpu()
 
-        weight_tensor = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 3, 3)) # visualize real kernel
-        weight_tensor_params = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 7)) # visualize with 7 parameters in HexaNet kernel
+        weight_tensor = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 3, 3)) # visualize weight of real kernel
+        weight_tensor_params = torch.zeros((weight_ts2.shape[0], weight_ts2.shape[1], 7)) # visualize with 7 parameters in kernel
         weight_tensor[:, :, :1, :2] += weight_ts1 / 2
         weight_tensor[:, :, :1, 1:] += weight_ts1 / 2
         weight_tensor[:, :, 1:2, :] += weight_ts2
@@ -183,14 +187,14 @@ def plot_weights(args, model, layer_num):
       
         num_kernels = weight_tensor.shape[0] #get the number of kernals
         
-        #define number of columns and rows for subplots
+        # define number of columns and rows for subplots
         num_cols = 12
         num_rows = ceil(num_kernels / float(num_cols))
 
-        # visualize weight_tensor            
+        ## visualize weight_tensor : weight of real kernel     
         fig = plt.figure(figsize=(num_cols, num_rows)) #set the figure size
         
-        #looping through all the kernels
+        # looping through all the kernels
         for i in range(num_kernels):
             ax1 = fig.add_subplot(num_rows,num_cols,i+1)
             
@@ -210,10 +214,10 @@ def plot_weights(args, model, layer_num):
         plt.savefig(save_path, dpi=100)    
         plt.tight_layout()
 
-        # visualize weight_tensor_params
+        ## visualize weight_tensor_params : 7 parameters in kernel
         fig = plt.figure(figsize=(num_cols, num_rows)) #set the figure size
         
-        #looping through all the kernels
+        # looping through all the kernels
         for i in range(num_kernels):
             ax1 = fig.add_subplot(num_rows,num_cols,i+1)
             
@@ -240,9 +244,14 @@ def plot_weights(args, model, layer_num):
         plt.tight_layout()
             
 def kernel_viz(args):
+    """
+    Visualize weight of kernel and feature map 
+    """
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Current cuda device: ', torch.cuda.current_device())
 
+    # Make val_loader
     val_loader = create_data_loaders(
         data_name=args.data_name,
         data_path=args.data_path_val, 
@@ -252,6 +261,7 @@ def kernel_viz(args):
         train=False
     )
 
+    # Assign model wrt net_name
     assert args.net_name == "LinearNet" or args.net_name == "LeNet5" or "VGG" in args.net_name or "Hexa" in args.net_name
     if args.net_name == "LinearNet":
         model = LinearNet(
@@ -289,16 +299,21 @@ def kernel_viz(args):
 
     model.load_state_dict(checkpoint['model'])
     model.eval()
-    summary(model, input_size=(3, 64, 64), device=device.type)
+    summary(model, input_size=(3, 64, 64), device=device.type) # for TinyImageNet, the input to the network is a 64x64 RGB image.
 
-    plot_weights(args, model, 0)
+    plot_weights(args, model, 0)  # custom function to plot weight of convolution layer
 
-    images, pred = show_feature(args, val_loader, args.image_index, model)
+    images, pred = show_feature(args, val_loader, args.image_index, model) # custom function to show feature maps of input image from dataloader
 
 def test_validate(args) :
+    """
+    print validate input image list which has correct prediction with Hexa16_fc_hue but wrong prediction with VGG16_fc
+    """
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Current cuda device: ', torch.cuda.current_device())
 
+    # Make val_loader
     val_loader = create_data_loaders(
         data_name=args.data_name,
         data_path=args.data_path_val, 
@@ -308,6 +323,7 @@ def test_validate(args) :
         train=False
     )
 
+    # Assign model_VGG with VGG16_fc and mode_Hexa with Hexa16_fc_hue
     model_VGG = VGGNet(
         model = 'VGG16_fc',
         in_channels = args.in_channels,
@@ -344,6 +360,7 @@ def test_validate(args) :
     model_Hexa.eval()
     summary(model_Hexa, input_size=(3, 64, 64), device=device.type)
 
+    # print validate input image list which has correct prediction with Hexa16_fc_hue but wrong prediction with VGG16_fc
     for idx, (images, targets) in enumerate(val_loader) :
         images = images.cuda(non_blocking=True)
         output_VGG = model_VGG(images)

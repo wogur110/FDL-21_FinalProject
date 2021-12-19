@@ -33,7 +33,7 @@ def parse():
 if __name__ == '__main__':
     args = parse()
     exp_dir_name = args.net_name + '_' + args.data_name
-    args.exp_dir = Path('./result/modelAug') / exp_dir_name
+    args.exp_dir = Path('./result/AdamW') / exp_dir_name
     checkpoints_dir = args.exp_dir / 'checkpoints'
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
